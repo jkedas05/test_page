@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ZCTA KML Exporter (JS)</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    textarea { width: 100%; height: 200px; }
+    .color-option { display: inline-block; width: 20px; height: 20px; margin-right: 5px; border: 1px solid #000; cursor: pointer; }
+    #colors { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h2>ZCTA KML Exporter (JavaScript)</h2>
+
+  <p><strong>Input Format:</strong> Each line must be a ZIP and population: <code>30013[TAB]1</code></p>
+
+  <textarea id="zipdata" placeholder="30013\t1\n30012\t5\n..."></textarea><br>
+
+  <p><strong>Optional Color Override:</strong></p>
+  <div id="colors"></div>
+
+  <button type="button" onclick="generateKML()">Generate KML</button>
+
+  <script>
+    const QUINTILE_COLORS = [
+      "ffc6ab81", // blue 5
+      "ffb17144", // blue-purple 4
+      "ff7d368a", // purple 3
+      "ff4824ac", // red-purple 2
+      "ff5568e6"  // red 1
+    ];
+
+    let selectedColor = null;
+
+    // Render color picker
+    const colorsDiv = document.getElementById('colors');
+    QUINTILE_COLORS.forEach((kmlColor, idx) => {
+      const htmlColor = "#" + kmlColor.slice(6,8) + kmlColor.slice(4,6) + kmlColor.slice(2,4);
+      const span = document.createElement('span');
+      span.className = 'color-option';
+      span.style.backgroundColor = htmlColor;
+      span.title = htmlColor;
+      span.onclick = () => {
+        selectedColor = idx;
+        document.querySelectorAll('.color-option').forEach(el => el.style.outline = 'none');
+        span.style.outline = '3px solid black';
+      };
+      colorsDiv.appendChild(span);
+    });
+
+    async function generateKML() {
+      const text = document.getElementById("zipdata").value.trim();
+      const lines = text.split(/\n/).map(l => l.trim()).filter(l => l);
+      const data = [];
+
+      for (let line of lines) {
+        const parts = line.split(/\s+|,/).map(p => p.trim());
+        if (parts.length === 2 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
+          data.push({ zip: parts[0], pop: parseInt(parts[1]) });
+        }
+      }
+
+      if (data.length === 0) {
+        alert("Invalid input. Use ZIP + population per line.");
+        return;
+      }
+
+      const zipMap = Object.fromEntries(data.map(d => [d.zip, d.pop]));
+
+      const response = await fetch("zctas_filled.json");
+      const geojson = await response.json();
+
+      const features = geojson.features.filter(f => zipMap[f.properties.ZCTA5CE10]);
+
+      if (features.length === 0) {
+        alert("No matching ZIP codes found.");
+        return;
+      }
+
+      const enriched = features.map(f => {
+        const pop = zipMap[f.properties.ZCTA5CE10];
+        return { ...f, population: pop };
+      });
+
+      if (selectedColor !== null) {
+        enriched.forEach(f => {
+          f.color = QUINTILE_COLORS[selectedColor];
+          f.quintile = selectedColor;
+        });
+      } else {
+        const pops = enriched.map(f => f.population);
+        const sorted = [...pops].sort((a,b) => a - b);
+        const quintileCutoffs = [0, 0.2, 0.4, 0.6, 0.8].map(p => sorted[Math.floor(p * sorted.length)]);
+
+        enriched.forEach(f => {
+          const pop = f.population;
+          let quintile = 0;
+          while (quintile < 4 && pop > quintileCutoffs[quintile + 1]) quintile++;
+          f.quintile = quintile;
+          f.color = QUINTILE_COLORS[quintile];
+        });
+      }
+
+      const kmlParts = [];
+      kmlParts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+      kmlParts.push(`<kml xmlns="http://www.opengis.net/kml/2.2"><Document>`);
+
+      QUINTILE_COLORS.forEach((color, i) => {
+        kmlParts.push(`
+          <Style id="q${i}">
+            <PolyStyle>
+              <color>${color}</color>
+              <fill>1</fill>
+              <outline>1</outline>
+            </PolyStyle>
+            <LineStyle>
+              <color>ff000000</color>
+              <width>2</width>
+            </LineStyle>
+          </Style>
+        `);
+      });
+
+      for (let f of enriched) {
+        const geom = f.geometry;
+        const coords = [];
+
+        function extractCoords(geom) {
+          if (geom.type === "Polygon") {
+            return [geom.coordinates];
+          } else if (geom.type === "MultiPolygon") {
+            return geom.coordinates;
+          } else {
+            return [];
+          }
+        }
+
+        const polygons = extractCoords(geom);
+
+        const placemark = [`<Placemark><name>${f.properties.ZCTA5CE10}</name><styleUrl>#q${f.quintile}</styleUrl>`];
+        if (polygons.length > 1) placemark.push("<MultiGeometry>");
+
+        for (let poly of polygons) {
+          const ring = poly[0].map(([x, y]) => `${x},${y},0`).join(" ");
+          placemark.push(`
+            <Polygon>
+              <outerBoundaryIs><LinearRing><coordinates>${ring}</coordinates></LinearRing></outerBoundaryIs>
+            </Polygon>
+          `);
+        }
+
+        if (polygons.length > 1) placemark.push("</MultiGeometry>");
+        placemark.push("</Placemark>");
+
+        kmlParts.push(placemark.join("\n"));
+      }
+
+      kmlParts.push("</Document></kml>");
+
+      const blob = new Blob([kmlParts.join("\n")], { type: "application/vnd.google-earth.kml+xml" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "matched_zctas.kml";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
