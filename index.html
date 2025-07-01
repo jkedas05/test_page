@@ -9,6 +9,7 @@
     .color-option { display: inline-block; width: 20px; height: 20px; margin-right: 5px; border: 1px solid #000; cursor: pointer; }
     #colors { margin: 10px 0; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
   <h2>ZCTA KML Exporter (JavaScript)</h2>
@@ -68,8 +69,21 @@
 
       const zipMap = Object.fromEntries(data.map(d => [d.zip, d.pop]));
 
-      const response = await fetch("zctas_filled.json");
-      const geojson = await response.json();
+      const zipResponse = await fetch("zctas_filled_min.zip");
+      const zipData = await zipResponse.arrayBuffer();
+
+      const zip = await JSZip.loadAsync(zipData);
+
+      // Assume the ZIP contains one .geojson file (e.g., "zctas_filled_min.geojson")
+      const geojsonFileName = Object.keys(zip.files).find(name => name.endsWith(".geojson"));
+      if (!geojsonFileName) {
+        alert("GeoJSON file not found in ZIP.");
+        return;
+      }
+
+      const geojsonText = await zip.files[geojsonFileName].async("string");
+      const geojson = JSON.parse(geojsonText);
+
 
       const features = geojson.features.filter(f => zipMap[f.properties.ZCTA5CE10]);
 
