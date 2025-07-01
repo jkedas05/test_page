@@ -85,7 +85,7 @@
       const geojson = JSON.parse(geojsonText);
 
 
-      const features = geojson.features.filter(f => zipMap[f.properties.ZCTA5CE10]);
+      const features = geojson.features.filter(f => zipMap[f.properties.ZCTA5CE20]);
 
       if (features.length === 0) {
         alert("No matching ZIP codes found.");
