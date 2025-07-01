@@ -12,16 +12,28 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
-  <h2>ZCTA KML Exporter (JavaScript)</h2>
+  <h2>ZCTA KML Exporter</h2>
 
-  <p><strong>Input Format:</strong> Each line must be a ZIP and population: <code>30013[TAB]1</code></p>
+  <p><strong>Input Format:</strong> Each line must be a space-separated ZIP and an audience: <code>30013[SPACE]1</code></p>
+  <p><strong>Note:</strong>You may copy-paste from a spreadsheet (easiest method)</p>
 
   <textarea id="zipdata" placeholder="30013\t1\n30012\t5\n..."></textarea><br>
 
-  <p><strong>Optional Color Override:</strong></p>
-  <div id="colors"></div>
+  <p hidden><strong>Optional Color Override:</strong></p>
+  <div id="colors" hidden></div>
 
   <button type="button" onclick="generateKML()">Generate KML</button>
+  <div class="">
+    <h3>What this does:</h3>
+    <ul name="description">
+      <li >Clicking the <b>'Generate KML'</b> button will download a file 'matched_zctas.kml' to your computer (found in downloads)</li>
+      <li>In DOmedia, go to <b>Maps &gt; Layers</b>, then give the layer a name, choose 'Upload file' and upload your file. Then hit save.</li>
+      <li>Now, go to <b>Maps &gt; Maps</b>, then click edit on the map you want the layer to appear on.</li>
+      <li>In the custom KML layers section, select the newly uploaded KML layer. Click save.</li>
+      <li>Load the map, and locate the settings dropdown menu in the top right. Scroll down to 'Custom KML Layers' and select the layer</li>
+    </ul>
+  </div>
+
 
   <script>
     const QUINTILE_COLORS = [
