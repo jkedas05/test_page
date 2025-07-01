@@ -93,7 +93,7 @@
       }
 
       const enriched = features.map(f => {
-        const pop = zipMap[f.properties.ZCTA5CE10];
+        const pop = zipMap[f.properties.ZCTA5CE20];
         return { ...f, population: pop };
       });
 
@@ -152,7 +152,7 @@
 
         const polygons = extractCoords(geom);
 
-        const placemark = [`<Placemark><name>${f.properties.ZCTA5CE10}</name><styleUrl>#q${f.quintile}</styleUrl>`];
+        const placemark = [`<Placemark><name>${f.properties.ZCTA5CE20}</name><styleUrl>#q${f.quintile}</styleUrl>`];
         if (polygons.length > 1) placemark.push("<MultiGeometry>");
 
         for (let poly of polygons) {
