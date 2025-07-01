@@ -57,9 +57,10 @@
 
       for (let line of lines) {
         const parts = line.split(/\s+|,/).map(p => p.trim());
-        if (parts.length === 2 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
-          data.push({ zip: parts[0], pop: parseInt(parts[1]) });
+        if (parts.length === 2 && /^\d+$/.test(parts[0]) && !isNaN(parts[1])) {
+          data.push({ zip: parts[0], pop: parseFloat(parts[1]) });
         }
+
       }
 
       if (data.length === 0) {
