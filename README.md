@@ -1,4 +1,3 @@
-# my_repo
-jupyter notebook testing
+The index.html file contains the webpage and the functionality and has no dependencies.
 
-stuff
+The 
